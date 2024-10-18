@@ -91,9 +91,11 @@ def save_df_to_gdrive(creds, df, lang_code):
     service_drive = build("drive", "v3", credentials=creds)
 
     if lang_code == "es":
-        folder_id = "1yqvCEsF55Zntbc__Oz89-mCgvBO0GRIj"
+        folder_id = "1KpNvszabc4KuI0AXbaA-dKuDdSQFeYsW"
+        # "1yqvCEsF55Zntbc__Oz89-mCgvBO0GRIj"
     if lang_code == "en":
-        folder_id = "1YCSmqQtV41IDWcABtxG_ADO-TWynCtlX"
+        folder_id = "1KpNvszabc4KuI0AXbaA-dKuDdSQFeYsW"
+        "1YCSmqQtV41IDWcABtxG_ADO-TWynCtlX"
 
     for index, row in df.iterrows():
         # Create document with original title and content
@@ -117,3 +119,99 @@ def save_df_to_gdrive(creds, df, lang_code):
             doc_title_translated,
             doc_content_translated,
         )
+
+
+def get_files_by_docid_prefix(service_drive, docid, old_folder_id):
+    """
+    Recherche tous les fichiers dans 'old_folder_id' dont le nom commence par 'docid_'.
+
+    :param service_drive: Service Google Drive authentifié.
+    :param docid: Le docid à rechercher (ex: 45).
+    :param old_folder_id: ID du dossier source où rechercher les fichiers.
+    :return: Une liste de fichiers (ID et nom) correspondant au critère de recherche.
+    """
+    try:
+        # Construire la requête pour chercher les fichiers dont le nom commence par 'docid_'
+        query = f"name contains '{docid}_' and mimeType = 'application/vnd.google-apps.document' and '{old_folder_id}' in parents"
+        print(query)
+        # Exécuter la requête
+        results = (
+            service_drive.files().list(q=query, fields="files(id, name)").execute()
+        )
+        files = results.get("files", [])
+
+        # Afficher les fichiers trouvés
+        if files:
+            for file in files:
+                print(f"Fichier trouvé: {file['name']} (ID: {file['id']})")
+            return files
+        else:
+            print(
+                f"Aucun fichier trouvé avec le préfixe '{docid}_' dans le dossier {old_folder_id}."
+            )
+            return None
+    except Exception as e:
+        print(f"Erreur lors de la recherche des fichiers : {e}")
+        return None
+
+
+def move_file(service_drive, file_id, old_folder_id, new_folder_id):
+    """
+    Déplace un fichier de 'old_folder_id' vers 'new_folder_id' sur Google Drive.
+
+    :param service_drive: Service Google Drive authentifié.
+    :param file_id: ID du fichier à déplacer.
+    :param old_folder_id: ID du dossier source.
+    :param new_folder_id: ID du dossier destination.
+    """
+    try:
+        # Ajouter le fichier au nouveau dossier
+        file = service_drive.files().get(fileId=file_id, fields="parents").execute()
+        previous_parents = ",".join(file.get("parents"))
+
+        # Déplacer le fichier en ajoutant le nouveau dossier et en supprimant l'ancien
+        service_drive.files().update(
+            fileId=file_id,
+            addParents=new_folder_id,
+            removeParents=old_folder_id,
+            fields="id, parents",
+        ).execute()
+
+        print(
+            f"Le fichier avec l'ID {file_id} a été déplacé dans le dossier {new_folder_id}."
+        )
+    except Exception as e:
+        print(f"Erreur lors du déplacement du fichier {file_id} : {e}")
+
+
+# Utilisation des fonctions
+def move_files_by_docid(creds, docid, lang_code):
+    """
+    Trouve et déplace tous les fichiers dont le nom commence par 'docid_' d'un ancien dossier à un nouveau.
+
+    :param creds: Credentials d'authentification Google.
+    :param docid: Le docid à rechercher.
+    :param old_folder_id: ID du dossier source.
+    :param new_folder_id: ID du dossier de destination.
+    """
+
+    if lang_code == "es":
+        old_folder_id = "1KpNvszabc4KuI0AXbaA-dKuDdSQFeYsW"
+        # "1yqvCEsF55Zntbc__Oz89-mCgvBO0GRIj"
+        new_folder_id = "1DHIycvGv7H5Jtfdempe_Y7455pIxnWrN"
+    if lang_code == "en":
+        old_folder_id = "1KpNvszabc4KuI0AXbaA-dKuDdSQFeYsW"
+        "1YCSmqQtV41IDWcABtxG_ADO-TWynCtlX"
+        new_folder_id = "1DHIycvGv7H5Jtfdempe_Y7455pIxnWrN"
+
+    # Initialiser le service Google Drive
+    service_drive = build("drive", "v3", credentials=creds)
+
+    # Récupérer les fichiers avec le préfixe 'docid_'
+    files = get_files_by_docid_prefix(service_drive, docid, old_folder_id)
+    print(files)
+
+    # Si des fichiers sont trouvés, les déplacer
+    if files:
+        for file in files:
+            move_file(service_drive, file["id"], old_folder_id, new_folder_id)

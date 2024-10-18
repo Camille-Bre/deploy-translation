@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Reviewer</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        // Activer/désactiver le bouton de validation en fonction des cases cochées
+        function toggleValidateButton() {
+            let checkedBoxes = $("input[name='articles']:checked").length;
+            if (checkedBoxes > 0) {
+                $("#validate-button").removeAttr('disabled');
+            } else {
+                $("#validate-button").attr('disabled', 'disabled');
+            }
+        }
+
+        // Tout cocher ou décocher
+        $(document).ready(function () {
+            $("#select-all").click(function () {
+                let isChecked = $(this).prop("checked");
+                $("input[name='articles']").prop("checked", isChecked);
+                toggleValidateButton(); // Mise à jour du bouton
+            });
+
+            $("input[name='articles']").change(function () {
+                toggleValidateButton();
+            });
+
+            // Afficher le message de validation en cours lors du clic sur le bouton
+            $("#validate-form").submit(function () {
+                $("#validate-button").prop('disabled', true);
+                $("#progress-message").text("Validation en cours, veuillez patienter...");
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center">Articles à valider</h2>
+
+        <!-- Bouton pour revenir à la page précédente -->
+        <div class="d-flex justify-content-end">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mb-3">Retour</a>
+        </div>
+
+        <!-- Affichage des messages de succès/erreur -->
+        {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Message de progression -->
+        <div id="progress-message" class="text-center text-info mb-3"></div>
+
+        <form id="validate-form" method="POST">
+            <div class="form-group">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Titre</th>
+                            <th scope="col">
+                                Sélectionner
+                                <input type="checkbox" id="select-all"> <!-- Case tout cocher -->
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for index, article in articles.iterrows() %}
+                            <tr>
+                                <td>{{ article['id'] }}</td>
+                                <td>{{ article['title'] }}</td>
+                                <td>
+                                    <input type="checkbox" name="articles" value="{{ article['id'] }}">
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bouton de validation -->
+            <button type="submit" id="validate-button" class="btn btn-success btn-block" disabled>
+                Valider la traduction
+            </button>
+        </form>
+    </div>
+</body>
+</html>

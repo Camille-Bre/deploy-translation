@@ -9,16 +9,19 @@
 <body>
     <div class="container">
         <h2 class="text-center">Choisissez une langue</h2>
+
         <form method="POST">
             <div class="form-group">
                 <label for="language">Langue :</label>
                 <select class="form-control" id="language" name="language" required>
-                    <option value="en">Anglais</option>
-                    <option value="es">Espagnol</option>
+                    <option value="en">🇬🇧 Anglais</option>
+                    <option value="es">🇪🇸 Espagnol</option>
                 </select>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Confirmer</button>
         </form>
+        <!-- Bouton pour revenir à la page précédente -->
+        <button class="btn btn-secondary mt-3" onclick="window.history.back()">Retour</button>
     </div>
 </body>
 </html>

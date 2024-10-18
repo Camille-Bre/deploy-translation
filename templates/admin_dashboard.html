@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center my-4">Admin Dashboard</h2>
+        <div class="row justify-content-center">
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for("select_language") }}" class="btn btn-primary btn-block">
+                    Accéder au Dashboard Traducteur
+                </a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('reviewer_dashboard') }}" class="btn btn-warning btn-block">
+                    Accéder au Dashboard Reviewer
+                </a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('approver_dashboard') }}" class="btn btn-success btn-block">
+                    Accéder au Dashboard Approbateur
+                </a>
+            </div>
+        </div>
+        <div class="text-center mt-5">
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary">Se déconnecter</a>
+        </div>
+    </div>
+</body>
+</html>

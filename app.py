@@ -1,3 +1,4 @@
+import csv
 import os
 from datetime import datetime
 
@@ -5,7 +6,11 @@ import pandas as pd
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from openai import OpenAI
 
-from translation.google_apis import google_authenticate, save_df_to_gdrive
+from translation.google_apis import (
+    google_authenticate,
+    move_files_by_docid,
+    save_df_to_gdrive,
+)
 from translation.translation import translate_csv_column
 
 app = Flask(__name__)
@@ -32,12 +37,29 @@ def save_articles(df):
 
 
 # Fonction pour charger les utilisateurs
-def load_users():
-    users_df = pd.read_csv(USERS_FILE)
-    users_df["lang"] = users_df["lang"].fillna(
-        "en"
-    )  # Mettre 'en' par défaut si la langue est vide
-    return users_df
+# def load_users():
+#     users_df = pd.read_csv(USERS_FILE)
+#     users_df["lang"] = users_df["lang"].fillna(
+#         "en"
+#     )  # Mettre 'en' par défaut si la langue est vide
+#     return users_df
+
+
+def get_user_by_username(username):
+    # Ouvrir et lire le fichier users.csv
+    with open(USERS_FILE, mode="r") as file:
+        reader = csv.DictReader(file)
+        # Parcourir chaque ligne pour trouver l'utilisateur
+        for row in reader:
+            if row["username"] == username:
+                # Retourner un dictionnaire contenant les informations de l'utilisateur
+                return {
+                    "username": row["username"],
+                    "role": row["role"],
+                    "lang": row["lang"],
+                }
+    # Retourner None si l'utilisateur n'est pas trouvé
+    return None
 
 
 # Page de connexion
@@ -47,27 +69,34 @@ def login():
         username = request.form["username"]
 
         # Charger les utilisateurs
-        users_df = load_users()
+        user = get_user_by_username(username)
 
-        # Vérifier si l'utilisateur existe
-        user = users_df[(users_df["username"] == username)]
-
-        if not user.empty:
+        if user:
             session["username"] = username
-            session["role"] = user.iloc[0]["role"]
-            session["lang"] = user.iloc[0]["lang"]
+            session["role"] = user["role"]
+            session["lang"] = user["lang"]
 
-            # Rediriger vers la page de sélection de langue si l'utilisateur est traducteur
-            if session["role"] == "translator":
+            # Redirection en fonction du rôle
+            if user["role"] == "admin":
+                return redirect(url_for("admin_dashboard"))
+            elif user["role"] == "translator":
                 return redirect(url_for("select_language"))
-
-            # Rediriger vers le tableau de bord si l'utilisateur a un autre rôle
-            return redirect(url_for("translator_dashboard"))
-
-        flash("Nom d’utilisateur incorrect")
-        return render_template("login.html")
+            elif user["role"] == "reviewer":
+                return redirect(url_for("reviewer_dashboard"))
+            elif user["role"] == "approver":
+                return redirect(url_for("approver_dashboard"))
 
     return render_template("login.html")
+
+
+@app.route("/admin_dashboard")
+def admin_dashboard():
+    # Vérifier que l'utilisateur est connecté et a le rôle d'admin
+    if "username" not in session or session["role"] != "admin":
+        return redirect(url_for("login"))
+
+    # Rendre la page de l'admin avec les trois boutons
+    return render_template("admin_dashboard.html")
 
 
 @app.route("/select_language", methods=["GET", "POST"])
@@ -83,7 +112,7 @@ def select_language():
 @app.route("/translator_dashboard", methods=["GET", "POST"])
 def translator_dashboard():
     # Vérifier que l'utilisateur est connecté et a le rôle de traducteur
-    if "username" not in session or session["role"] != "translator":
+    if "username" not in session or session["role"] not in ["admin", "translator"]:
         return redirect(url_for("login"))
 
     # Charger les articles depuis le fichier CSV
@@ -156,6 +185,56 @@ def translator_dashboard():
         return redirect(url_for("translator_dashboard"))
 
     return render_template("translator_dashboard.html", articles=articles_to_translate)
+
+
+@app.route("/reviewer_dashboard", methods=["GET", "POST"])
+def reviewer_dashboard():
+    # Vérifier que l'utilisateur est connecté et a le rôle de reviewer
+    if "username" not in session or session["role"] not in ["admin", "reviewer"]:
+        return redirect(url_for("login"))
+
+    # Charger les articles depuis le fichier .csv
+    articles_df = load_articles()
+
+    # Filtrer les articles en fonction de la langue choisie
+    lang = session.get("lang")
+    ai_translated_column = "ai_translated_" + lang
+    translation_reviewed_column = "translation_reviewed_" + lang
+
+    # Sélectionner les articles déja traduits par IA par encore reviewé
+    articles_to_review = articles_df[
+        (articles_df[ai_translated_column] == True)
+        & (articles_df[translation_reviewed_column] == False)
+    ]
+
+    # Ordonner les articles par ID
+    articles_to_review = articles_to_review.sort_values(by="id")
+
+    if request.method == "POST":
+        selected_articles = request.form.getlist("articles")
+        selected_articles = list(map(int, selected_articles))
+
+        try:
+            creds = google_authenticate()
+            for docid in selected_articles:
+                move_files_by_docid(creds, docid, lang)
+
+            flash("Review validée et documents déplacés.", "success")
+
+            # Sauvegarder le fichier CSV mis à jour
+            save_articles(articles_df)
+
+        except Exception as e:
+            flash(f"Erreur lors du déplacement des documents : {str(e)}", "danger")
+
+        return redirect(url_for("reviewer_dashboard"))
+    return render_template("reviewer_dashboard.html", articles=articles_to_review)
+
+
+@app.route("/approver_dashboard", methods=["GET", "POST"])
+def approver_dashboard():
+    # Code pour afficher le dashboard des approbateurs
+    pass
 
 
 # Tableau de bord : affichage de tous les articles
