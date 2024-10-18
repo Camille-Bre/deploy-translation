@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+</head>
+<body>
+    <h2>Welcome {{ session['username'] }}</h2>
+
+    <form method="post" action="/dashboard">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>AI Translated (EN)</th>
+                    <th>AI Translated (ES)</th>
+                    <th>Reviewed (EN)</th>
+                    <th>Reviewed (ES)</th>
+                    <th>Approved (EN)</th>
+                    <th>Approved (ES)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in articles %}
+                <tr>
+                    <td><input type="checkbox" name="article_ids" value="{{ article['id'] }}"></td>
+                    <td>{{ article['id'] }}</td>
+                    <td>{{ article['title'] }}</td>
+                    <td>{{ article['ai_translated_en'] }}</td>
+                    <td>{{ article['ai_translated_es'] }}</td>
+                    <td>{{ article['translation_reviewed_en'] }}</td>
+                    <td>{{ article['translation_reviewed_es'] }}</td>
+                    <td>{{ article['approved_en'] }}</td>
+                    <td>{{ article['approved_es'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button type="submit">Update Selected Articles</button>
+    </form>
+
+    <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

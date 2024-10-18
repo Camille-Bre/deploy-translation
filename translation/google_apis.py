@@ -1,6 +1,5 @@
 import os.path
 
-import pandas as pd
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -87,17 +86,15 @@ def create_google_doc(service_docs, service_drive, folder_id, document_title, co
         print(f"Document '{document_title}' non créé car il existe déjà.")
 
 
-# Fonction principale pour lire le CSV et créer des documents Google Docs dans un dossier spécifique
-def main(csv_file, folder_id, lang_code):
-    # Lire le fichier CSV
-    df = pd.read_csv(csv_file)
-
-    # Authentification sur Google API
-    creds = google_authenticate()
+def save_df_to_gdrive(creds, df, lang_code):
     service_docs = build("docs", "v1", credentials=creds)
     service_drive = build("drive", "v3", credentials=creds)
 
-    # Boucler sur chaque ligne du DataFrame
+    if lang_code == "es":
+        folder_id = "1yqvCEsF55Zntbc__Oz89-mCgvBO0GRIj"
+    if lang_code == "en":
+        folder_id = "1YCSmqQtV41IDWcABtxG_ADO-TWynCtlX"
+
     for index, row in df.iterrows():
         # Create document with original title and content
         doc_title = f"{row['id']}_{row['title']}"
@@ -120,11 +117,3 @@ def main(csv_file, folder_id, lang_code):
             doc_title_translated,
             doc_content_translated,
         )
-
-
-if __name__ == "__main__":
-    csv_file = "./data/posts_translated_es_Maria_241016.csv"  # Remplacez par le chemin de votre fichier CSV
-    folder_id = "1KpNvszabc4KuI0AXbaA-dKuDdSQFeYsW"  # Remplacez par l'ID du dossier Google Drive où vous voulez créer les documents
-    lang_code = "es"  # Remplacez par le code de langue de votre fichier CSV
-
-    main(csv_file, folder_id, lang_code)
